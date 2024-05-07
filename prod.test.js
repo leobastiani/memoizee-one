@@ -1,8 +1,8 @@
 // @ts-check
 
 import assert from "node:assert";
-import { test } from "node:test";
-import memoizee from "./index.js";
+import { mock, test } from "node:test";
+import memoizeeOne from "./index.js";
 
 test("success", () => {
   let calls = 0;
@@ -10,7 +10,7 @@ test("success", () => {
     calls++;
     return a + 1;
   };
-  const memoized = memoizee(myMock);
+  const memoized = memoizeeOne(myMock);
   memoized(1);
   memoized(1);
   assert.strictEqual(calls, 1);
@@ -26,7 +26,7 @@ test("with different this", () => {
     // @ts-expect-error
     return [this, a + 1];
   }
-  const memoized = memoizee(fn);
+  const memoized = memoizeeOne(fn);
   const this1 = {};
   memoized.call(this1, 1);
   assert.strictEqual(memoized(1)[0], this1);
@@ -44,4 +44,21 @@ test("with different this", () => {
   assert.strictEqual(memoized(2)[0], undefined);
   assert.strictEqual(memoized(2)[1], 3);
   assert.strictEqual(calls, 3);
+});
+
+test("errored", () => {
+  const error = new Error();
+  const myMock = mock.fn((/** @type {number} */ a) => {
+    if (a === 1) {
+      throw error;
+    }
+    return 42;
+  });
+  const memoized = memoizeeOne(myMock);
+  assert.throws(() => memoized(1), error);
+  assert.throws(() => memoized(1), error);
+  assert.strictEqual(myMock.mock.callCount(), 1);
+
+  assert.strictEqual(memoized(2), 42);
+  assert.strictEqual(myMock.mock.callCount(), 2);
 });
